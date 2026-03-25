@@ -24,8 +24,6 @@ import time
 import warnings
 
 warnings.filterwarnings("ignore")
-
-# --- Stałe: pliki danych (bez wyszukiwania ścieżek) ----------------------------
 TRAIN_FILE = "train.csv"
 TEST_FILE = "test.csv"
 SUBMIT_FILE = "submission.csv"
@@ -50,7 +48,6 @@ def _training_profile() -> tuple[int, tuple[int, ...], int, int, int]:
 
 N_SPLITS, SEEDS, EARLY_STOP, MAX_TREES, HGB_MAX_ITER = _training_profile()
 
-# Auto-install brakujących pakietów (Colab)
 def _pip(*pkgs: str) -> None:
     subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", *pkgs])
 
@@ -312,7 +309,6 @@ def main() -> None:
             Xt = pre.transform(X_tr)
             Xv = pre.transform(X_va)
             Xe = pre.transform(te_x)
-            # Mniej RAM / szybsze operacje na dużym GPU: wymuszenie float32, jeśli to numpy array.
             if isinstance(Xt, np.ndarray):
                 Xt = Xt.astype(np.float32, copy=False)
             if isinstance(Xv, np.ndarray):
@@ -320,7 +316,6 @@ def main() -> None:
             if isinstance(Xe, np.ndarray):
                 Xe = Xe.astype(np.float32, copy=False)
 
-            # ----- XGBoost -----
             xgb_kw = dict(
                 n_estimators=MAX_TREES,
                 learning_rate=0.02,
@@ -351,7 +346,6 @@ def main() -> None:
             oof_xgb[va_i] += pv / n_bags
             pred_xgb += pe / (n_bags * N_SPLITS)
 
-            # ----- LightGBM -----
             X_tr_l, cf = lgb_cat_frame(X_tr, plan.cat_cols, X_tr)
             X_va_l, _ = lgb_cat_frame(X_va, plan.cat_cols, X_tr)
             X_te_l, _ = lgb_cat_frame(te_x, plan.cat_cols, X_tr)
@@ -406,11 +400,9 @@ def main() -> None:
             oof_lgb[va_i] += pv / n_bags
             pred_lgb += pe / (n_bags * N_SPLITS)
 
-            # ----- CatBoost -----
             train_pool = catboost_pool(X_tr, plan.cat_cols, y_tr)
             val_pool = catboost_pool(X_va, plan.cat_cols, y_va)
             te_pool = catboost_pool(te_x, plan.cat_cols, None)
-            # Na GPU CatBoost co iterację nie liczy AUC — lawina ostrzeżeń; Logloss = pełny early-stop bez szuflady.
             _cat_eval = "Logloss" if USE_GPU else "AUC"
             ckw = dict(
                 iterations=MAX_TREES,
@@ -441,7 +433,6 @@ def main() -> None:
             oof_cat[va_i] += pv / n_bags
             pred_cat += pe / (n_bags * N_SPLITS)
 
-            # ----- HistGradientBoosting (scikit-learn) -----
             mh = HistGradientBoostingClassifier(
                 learning_rate=0.04,
                 max_depth=10,
@@ -467,7 +458,6 @@ def main() -> None:
 
             step += 1
             now = time.time()
-            # Drukuj co fold (czytelne %), ale unikaj sytuacji gdy konsola mieli co za często.
             if (now - last_print_wall) > 0.1 or step == total_steps:
                 elapsed = now - start_wall
                 avg = elapsed / max(1, step)
@@ -500,7 +490,6 @@ def main() -> None:
     auc_l = roc_auc_score(y, oof_lgb)
     auc_c = roc_auc_score(y, oof_cat)
     auc_h = roc_auc_score(y, oof_hgb)
-    # wagi bazowe ~ kwadrat „nad randomem” — mocniej dociskamy LGB/CAT jeśli OOF lepsze
     w_raw = np.maximum(np.array([auc_x, auc_l, auc_c, auc_h]) - 0.5, 0.02) ** 2
     w_base = w_raw / w_raw.sum()
     oof_w = w_base[0] * oof_xgb + w_base[1] * oof_lgb + w_base[2] * oof_cat + w_base[3] * oof_hgb
@@ -546,7 +535,6 @@ def main() -> None:
     pd.DataFrame({ID_COL: ids, TARGET_COL: np.clip(te_m, 1e-7, 1 - 1e-7)}).to_csv(
         SUBMIT_FILE.replace(".csv", "_stack_only.csv"), index=False
     )
-    # Często bliżej LB niż ciężki meta — średnia rang tylko LGB+CAT
     pd.DataFrame({ID_COL: ids, TARGET_COL: np.clip(te_lc, 1e-7, 1 - 1e-7)}).to_csv(
         SUBMIT_FILE.replace(".csv", "_rank_lgb_cat.csv"), index=False
     )
