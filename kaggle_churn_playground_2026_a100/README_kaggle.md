@@ -82,7 +82,7 @@ Najprościej: wgraj plik `colab_churn_ensemble.py` do notebooka i:
 %run colab_churn_ensemble.py
 ```
 
-## Wynik z Twojego A100 run (zrzut)
+## Wynik z A100 run (colab - zrzut)
 - OOF ROC-AUC (przybliżone wartości z loga):
   - XGB: `0.914459`
   - LGB: `0.916703`
