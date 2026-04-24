@@ -1,21 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Jeden plik pod Kaggle Churn — maksymalizacja ROC-AUC (prawdopodobieństwa).
-
-W Colab: wgraj train.csv i test.csv do /content (obok notebooka / ten sam katalog),
-  albo uruchom: os.chdir("/content") jeśli pliki tam leżą.
-Nie skanuje dysku — oczekuje dokładnie: train.csv, test.csv w bieżącym katalogu.
-
-Opcjonalnie pierwsza linia:
-  # !pip -q install pandas numpy scikit-learn lightgbm xgboost catboost
-
-Tryb czasu / jakości (zmienna środowiskowa):
-  CHURN_PRESET=balanced (domyślnie) | fast | max
-  - fast: ~3–4× krócej niż max, nieco inna wariancja OOF
-  - max: 10 foldów × 5 seedów (~jak wcześniej, na noc / final submit)
-"""
 from __future__ import annotations
-
 import importlib.util
 import os
 import subprocess
